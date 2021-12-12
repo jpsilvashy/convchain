@@ -10,17 +10,14 @@ var ConvChain = function ConvChain (sample, sampleSize) {
     this.setSample(sample, sampleSize);
 };
 
-
 function showField (field, height=27, width=27) {
-
-// some code to display the result
-for (var y = 0; y < height; y++) {
+  for (var y = 0; y < height; y++) {
     var s = '';
     for (var x = 0; x < width; x++) {
-        s += ' ' + field[x + y * width];
+      s += ' ' + field[x + y * width];
     }
     console.log(s);
-}
+  }
 }
 
 /**
@@ -65,9 +62,6 @@ ConvChain.prototype.setSample = function (sample, sampleSize) {
 };
 
 var processWeights = function processWeights (sample, constraintField, sampleWidth, sampleHeight, n) {
-
-    // console.log('constraintField')
-    // console.log(constraintField)
 
     var weights = new Float32Array(1 << (n * n)),
         k,
@@ -164,16 +158,10 @@ var generateBaseField = function generateBaseField (resultWidth, resultHeight, r
         field[i] = rng() < 0.5;
     }
 
-    console.log('generateBaseField ------------------')
-    showField(field)
-
     return field;
 };
 
 var applyChanges = function applyChanges (field, constraintField, weights, resultWidth, resultHeight, n, temperature, changes, rng) {
-
-    console.log('constraintField ------------------')
-    showField(constraintField)
 
     var r,
         q,
@@ -232,7 +220,7 @@ var applyChanges = function applyChanges (field, constraintField, weights, resul
             }
         }
 
-        if (constraintField[x + y * resultWidth] != 2) {
+        if ( constraintField != null && (constraintField[x + y * resultWidth] != 2) ) {
             field[x + y * resultWidth] = constraintField[x + y * resultWidth];
             temperature = 0
 
@@ -269,12 +257,13 @@ var applyChanges = function applyChanges (field, constraintField, weights, resul
  * @param {function} [rng] A random number generator, default to Math.random
  * @returns {Uint8Array} Generated pattern, returned as a flat Uint8Array
  */
-ConvChain.prototype.generate = function (resultSize, constraintField, n, temperature, iterations, rng) {
+ConvChain.prototype.generate = function (resultSize, initialField, constraintField, n, temperature, iterations, rng) {
     rng = rng || Math.random;
 
     var resultWidth = typeof resultSize === 'number' ? resultSize : resultSize[0],
         resultHeight = typeof resultSize === 'number' ? resultSize : resultSize[1],
         changesPerIterations = resultWidth * resultHeight,
+        // field = initialField || generateBaseField(resultWidth, resultHeight, rng),
         field = generateBaseField(resultWidth, resultHeight, rng),
         weights = this.getWeights(n),
         i;
