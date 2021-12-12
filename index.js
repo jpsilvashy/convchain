@@ -10,6 +10,19 @@ var ConvChain = function ConvChain (sample, sampleSize) {
     this.setSample(sample, sampleSize);
 };
 
+
+function showField (field, height=27, width=27) {
+
+// some code to display the result
+for (var y = 0; y < height; y++) {
+    var s = '';
+    for (var x = 0; x < width; x++) {
+        s += ' ' + field[x + y * width];
+    }
+    console.log(s);
+}
+}
+
 /**
  * Set the sample pattern
  * @param {Array|Uint8Array} sample Sample pattern as a flat array or a 2D array
@@ -51,7 +64,11 @@ ConvChain.prototype.setSample = function (sample, sampleSize) {
     this.cachedWeights = null;
 };
 
-var processWeights = function processWeights (sample, sampleWidth, sampleHeight, n) {
+var processWeights = function processWeights (sample, constraintField, sampleWidth, sampleHeight, n) {
+
+    // console.log('constraintField')
+    // console.log(constraintField)
+
     var weights = new Float32Array(1 << (n * n)),
         k,
         x,
@@ -133,7 +150,7 @@ ConvChain.prototype.getWeights = function (n) {
     // check if we have to generate new weights, otherwise return cached result
     if (this.cachedN !== n) {
         this.cachedN = n;
-        this.cachedWeights = processWeights(this.sample, this.sampleWidth, this.sampleHeight, n);
+        this.cachedWeights = processWeights(this.sample, this.constraintField, this.sampleWidth, this.sampleHeight, n);
     }
 
     return this.cachedWeights;
@@ -147,10 +164,17 @@ var generateBaseField = function generateBaseField (resultWidth, resultHeight, r
         field[i] = rng() < 0.5;
     }
 
+    console.log('generateBaseField ------------------')
+    showField(field)
+
     return field;
 };
 
-var applyChanges = function applyChanges (field, weights, resultWidth, resultHeight, n, temperature, changes, rng) {
+var applyChanges = function applyChanges (field, constraintField, weights, resultWidth, resultHeight, n, temperature, changes, rng) {
+
+    console.log('constraintField ------------------')
+    showField(constraintField)
+
     var r,
         q,
         i,
@@ -168,6 +192,7 @@ var applyChanges = function applyChanges (field, weights, resultWidth, resultHei
         r = (rng() * resultWidth * resultHeight) | 0;
         x = (r % resultWidth) | 0;
         y = (r / resultWidth) | 0;
+
 
         for (sy = y - n + 1; sy <= y + n - 1; sy++) {
             for (sx = x - n + 1; sx <= x + n - 1; sx++) {
@@ -207,18 +232,32 @@ var applyChanges = function applyChanges (field, weights, resultWidth, resultHei
             }
         }
 
-        if (q >= 1) {
-            field[x + y * resultWidth] = !field[x + y * resultWidth];
-        } else {
-            if (temperature != 1) {
-                q = Math.pow(q, 1.0 / temperature);
-            }
+        if (constraintField[x + y * resultWidth] != 2) {
+            field[x + y * resultWidth] = constraintField[x + y * resultWidth];
+            temperature = 0
 
-            if (q > rng()) {
+            q = 0;
+            r = 0;
+    
+        } else {
+            if (q >= 1) {
                 field[x + y * resultWidth] = !field[x + y * resultWidth];
+            } else {
+                if (temperature != 1) {
+                    q = Math.pow(q, 1.0 / temperature);
+                }
+    
+                if (q > rng()) {
+                    field[x + y * resultWidth] = !field[x + y * resultWidth];
+                }
             }
         }
+
     }
+
+    // console.log('applyChanges ------------------')
+    // showField (field, 32, 32)
+
 };
 
 /**
@@ -230,7 +269,7 @@ var applyChanges = function applyChanges (field, weights, resultWidth, resultHei
  * @param {function} [rng] A random number generator, default to Math.random
  * @returns {Uint8Array} Generated pattern, returned as a flat Uint8Array
  */
-ConvChain.prototype.generate = function (resultSize, n, temperature, iterations, rng) {
+ConvChain.prototype.generate = function (resultSize, constraintField, n, temperature, iterations, rng) {
     rng = rng || Math.random;
 
     var resultWidth = typeof resultSize === 'number' ? resultSize : resultSize[0],
@@ -241,7 +280,11 @@ ConvChain.prototype.generate = function (resultSize, n, temperature, iterations,
         i;
 
     for (i = 0; i < iterations; i++) {
-        applyChanges(field, weights, resultWidth, resultHeight, n, temperature, changesPerIterations, rng);
+    applyChanges(field, constraintField, weights, resultWidth, resultHeight, n, temperature, changesPerIterations, rng);
+
+    // console.log('--------------------------------')
+    // showField (field, 32, 32)
+
     }
 
     return field;
@@ -257,7 +300,7 @@ ConvChain.prototype.generate = function (resultSize, n, temperature, iterations,
  * @param {function} [rng] A random number generator, default to Math.random
  * @returns {Uint8Array} Pattern iterated upon, returned as a flat Uint8Array
  */
-ConvChain.prototype.iterate = function (field, resultSize, n, temperature, tries, rng) {
+ConvChain.prototype.iterate = function (field, constraintField, resultSize, n, temperature, tries, rng) {
     var resultWidth = typeof resultSize === 'number' ? resultSize : resultSize[0],
         resultHeight = typeof resultSize === 'number' ? resultSize : resultSize[1],
         weights = this.getWeights(n),
@@ -268,7 +311,7 @@ ConvChain.prototype.iterate = function (field, resultSize, n, temperature, tries
     rng = rng || Math.random;
     field = field || generateBaseField(resultWidth, resultHeight, rng);
 
-    applyChanges(field, weights, resultWidth, resultHeight, n, temperature, tries, rng);
+    applyChanges(field, constraintField, weights, resultWidth, resultHeight, n, temperature, tries, rng);
 
     return field;
 };
